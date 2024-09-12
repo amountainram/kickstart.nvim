@@ -3,6 +3,9 @@ return {
   dependencies = { 'nvim-tree/nvim-web-devicons' },
   config = function()
     require('nvim-tree').setup {
+      hijack_directories = {
+        enable = false,
+      },
       filters = {
         git_ignored = false,
       },
