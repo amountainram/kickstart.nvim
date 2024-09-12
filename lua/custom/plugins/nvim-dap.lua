@@ -26,10 +26,14 @@ return {
 
     -- lldb support
     'julianolf/nvim-dap-lldb',
+
+    -- lua
+    'jbyuki/one-small-step-for-vimkind',
   },
   keys = function(_, keys)
     local dap = require 'dap'
     local dapui = require 'dapui'
+    local osv = require 'osv'
     return {
       -- Basic debugging keymaps, feel free to change to your liking!
       { '<F5>', dap.continue, desc = 'Debug: Start/Continue' },
@@ -46,6 +50,19 @@ return {
       },
       -- Toggle to see last session result. Without this, you can't see session output in case of unhandled exception.
       { '<F7>', dapui.toggle, desc = 'Debug: See last session result.' },
+      {
+        '<F12>',
+        function()
+          if osv.is_running() then
+            osv.stop()
+            print 'Debug: Lua Server Stopped'
+          else
+            osv.launch { port = 8086 }
+          end
+        end,
+        desc = 'Debug: Launch/Stop Lua Server on port 8086',
+      },
+
       unpack(keys),
     }
   end,
@@ -135,5 +152,17 @@ return {
     }
     -- Install rust specific config
     require('dap-lldb').setup {}
+
+    dap.configurations.lua = {
+      {
+        type = 'nlua',
+        request = 'attach',
+        name = 'Attach to running Neovim instance',
+      },
+    }
+
+    dap.adapters.nlua = function(callback, config)
+      callback { type = 'server', host = config.host or '127.0.0.1', port = config.port or 8086 }
+    end
   end,
 }
