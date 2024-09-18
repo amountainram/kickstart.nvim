@@ -469,11 +469,19 @@ require('lazy').setup({
     end,
   },
 
+  -- local config
+  {
+    'folke/neoconf.nvim',
+  },
+
   -- LSP Plugins
   {
     -- `lazydev` configures Lua LSP for your Neovim config, runtime and plugins
     -- used for completion, annotations and signatures of Neovim apis
     'folke/lazydev.nvim',
+    dependencies = {
+      'folke/neoconf.nvim',
+    },
     ft = 'lua',
     opts = {
       library = {
@@ -500,6 +508,7 @@ require('lazy').setup({
       'saghen/blink.cmp',
     },
     config = function()
+      require('neoconf').setup {}
       -- Brief aside: **What is LSP?**
       --
       -- LSP is an initialism you've probably heard, but might not understand what it is.
