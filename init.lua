@@ -687,7 +687,9 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        clangd = {},
+        clangd = {
+          filetypes = { 'c', 'cpp', 'objc', 'objcpp', 'cuda' }, -- exclude "proto".
+        },
         cmake = {},
         cpptools = {},
         codelldb = {},
@@ -714,7 +716,24 @@ require('lazy').setup({
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
         --
-        jsonls = {},
+        jsonls = {
+          settings = {
+            json = {
+              format = {
+                enable = true,
+                indent = {
+                  tabWidth = 2, -- Use 2 spaces for indentation
+                },
+              },
+            },
+          },
+          on_attach = function(_, bufnr)
+            -- Disable tab-to-indent behavior for JSON files
+            vim.bo[bufnr].expandtab = true -- Use spaces instead of tabs
+            vim.bo[bufnr].shiftwidth = 2 -- Indent with 2 spaces
+            vim.bo[bufnr].tabstop = 2 -- Tab characters as 2 spaces
+          end,
+        },
         ts_ls = {},
         taplo = {},
         lua_ls = {
@@ -982,6 +1001,8 @@ require('lazy').setup({
         'diff',
         'html',
         'javascript',
+        'json',
+        'jsonc',
         'lua',
         'luadoc',
         'markdown',
