@@ -4,9 +4,6 @@ return {
     'neovim/nvim-lspconfig',
   },
   config = function()
-    require('lspconfig').protols.setup {
-      cmd = { 'env', 'RUST_BACKTRACE=full', 'protols' },
-      filetypes = { 'proto' },
-    }
+    require('lspconfig').protols.setup {}
   end,
 }
