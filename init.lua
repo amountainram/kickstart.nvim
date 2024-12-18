@@ -92,6 +92,9 @@ vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = true
+vim.g.markdown_fenced_languages = {
+  'ts=typescript',
+}
 
 -- netrw disable
 vim.g.loaded_netrw = 1
@@ -745,11 +748,27 @@ require('lazy').setup({
           end,
         },
         denols = {
-          on_attach = vim.cmd.on_attach,
+          root_dir = require('lspconfig').util.root_pattern('deno.json', 'deno.jsonc'),
+          on_attach = vim.on_attach,
+          settings = {
+            deno = {
+              enable = true,
+              lint = true,
+              suggest = {
+                imports = {
+                  hosts = {
+                    ['https://deno.land'] = true,
+                  },
+                },
+              },
+              unstable = true,
+            },
+          },
         },
         ts_ls = {
-          on_attach = vim.cmd.on_attach,
+          on_attach = vim.on_attach,
           single_file_support = false,
+          root_dir = require('lspconfig').util.root_pattern 'package.json',
         },
         taplo = {},
         lua_ls = {
@@ -794,12 +813,6 @@ require('lazy').setup({
           function(server_name)
             local nvim_lsp = require 'lspconfig'
             local server = servers[server_name] or {}
-            if server_name == 'denols' then
-              root_dir = nvim_lsp.util.root_pattern('deno.json', 'deno.jsonc')
-            end
-            if server_name == 'ts_ls' then
-              nvim_lsp.util.root_pattern 'package.json'
-            end
 
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling
