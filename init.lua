@@ -744,7 +744,13 @@ require('lazy').setup({
             vim.bo[bufnr].tabstop = 2 -- Tab characters as 2 spaces
           end,
         },
-        ts_ls = {},
+        denols = {
+          on_attach = vim.cmd.on_attach,
+        },
+        ts_ls = {
+          on_attach = vim.cmd.on_attach,
+          single_file_support = false,
+        },
         taplo = {},
         lua_ls = {
           -- cmd = { ... },
@@ -786,12 +792,20 @@ require('lazy').setup({
         automatic_installation = false,
         handlers = {
           function(server_name)
+            local nvim_lsp = require 'lspconfig'
             local server = servers[server_name] or {}
+            if server_name == 'denols' then
+              root_dir = nvim_lsp.util.root_pattern('deno.json', 'deno.jsonc')
+            end
+            if server_name == 'ts_ls' then
+              nvim_lsp.util.root_pattern 'package.json'
+            end
+
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling
             -- certain features of an LSP (for example, turning off formatting for ts_ls)
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
+            nvim_lsp[server_name].setup(server)
           end,
         },
       }
