@@ -99,6 +99,7 @@ vim.g.markdown_fenced_languages = {
 -- netrw disable
 vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
+vim.opt.hidden = false
 vim.opt.termguicolors = true
 
 -- [[ Setting options ]]
@@ -700,7 +701,14 @@ require('lazy').setup({
         codelldb = {},
         -- gopls = {},
         -- pyright = {},
-        eslint = {},
+        eslint = {
+          on_attach = function(_, bufnr)
+            vim.api.nvim_create_autocmd('BufWritePre', {
+              buffer = bufnr,
+              command = 'EslintFixAll',
+            })
+          end,
+        },
         rust_analyzer = {
           settings = {
             ['rust-analyzer'] = {
