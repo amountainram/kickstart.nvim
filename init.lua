@@ -814,6 +814,12 @@ require('lazy').setup({
           end,
         },
       }
+
+      require('lspconfig').asm_lsp.setup {
+        on_attach = vim.on_attach,
+        command = 'asm-lsp',
+        filetypes = { 'asm', 's', 'S' },
+      }
     end,
   },
 
