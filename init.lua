@@ -706,7 +706,7 @@ require('lazy').setup({
         cmake = {},
         cpptools = {},
         codelldb = {},
-        -- gopls = {},
+        gopls = {},
         -- pyright = {},
         eslint = {},
         rust_analyzer = {
@@ -932,6 +932,10 @@ require('lazy').setup({
         --
         -- See :h blink-cmp-config-keymap for defining your own keymap
         preset = 'enter',
+        ['<Tab>'] = false, -- Select next item in the completion menu
+        ['<S-Tab>'] = false, -- Select previous item in the completion menu
+
+        -- Accept completion with <CR> (enter), like the 'enter' preset
 
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
