@@ -521,6 +521,7 @@ require('lazy').setup({
       'saghen/blink.cmp',
     },
     config = function()
+      require('lazydev').setup {}
       require('neoconf').setup {}
       -- Brief aside: **What is LSP?**
       --
@@ -721,7 +722,7 @@ require('lazy').setup({
           rust_analyzer = {
             settings = {
               ['rust-analyzer'] = {
-                check = {
+                checkOnSave = {
                   command = 'clippy',
                 },
                 inlayHints = {
