@@ -688,100 +688,110 @@ require('lazy').setup({
       --  By default, Neovim doesn't support everything that is in the LSP specification.
       --  When you add blink.cmp, luasnip, etc. Neovim now has *more* capabilities.
       --  So, we create new capabilities with blink.cmp, and then broadcast that to the servers.
-      local capabilities = require('blink.cmp').get_lsp_capabilities()
-
-      -- Enable the following language servers
-      --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
+      -- NOTE: The following line is now commented as blink.cmp extends capabilites by default from its internal code:
+      -- https://github.com/Saghen/blink.cmp/blob/102db2f5996a46818661845cf283484870b60450/plugin/blink-cmp.lua
+      -- It has been left here as a comment for educational purposes (as the predecessor completion plugin required this explicit step).
       --
-      --  Add any additional override configuration in the following tables. Available keys are:
-      --  - cmd (table): Override the default command used to start the server
-      --  - filetypes (table): Override the default list of associated filetypes for the server
-      --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
-      --  - settings (table): Override the default settings passed when initializing the server.
-      --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
+      -- local capabilities = require("blink.cmp").get_lsp_capabilities()
+
+      -- Language servers can broadly be installed in the following ways:
+      --  1) via the mason package manager; or
+      --  2) via your system's package manager; or
+      --  3) via a release binary from a language server's repo that's accessible somewhere on your system.
+
+      -- The servers table comprises of the following sub-tables:
+      -- 1. mason
+      -- 2. others
+      -- Both these tables have an identical structure of language server names as keys and
+      -- a table of language server configuration as values.
+      ---@class LspServersConfig
+      ---@field mason table<string, vim.lsp.Config>
+      ---@field others table<string, vim.lsp.Config>
       local servers = {
-        clangd = {
-          filetypes = { 'c', 'cpp', 'objc', 'objcpp', 'cuda' }, -- exclude "proto".
-        },
-        cmake = {},
-        cpptools = {},
-        codelldb = {},
-        gopls = {},
-        -- pyright = {},
-        eslint = {},
-        rust_analyzer = {
-          settings = {
-            ['rust-analyzer'] = {
-              checkOnSave = {
-                command = 'clippy',
-              },
-              inlayHints = {
-                enable = true,
-                showParameterNames = true,
-                parameterHintsPrefix = '<- ',
-                otherHintsPrefix = '=> ',
-              },
-            },
+        mason = {
+          clangd = {
+            filetypes = { 'c', 'cpp', 'objc', 'objcpp', 'cuda' }, -- exclude "proto".
           },
-        },
-        -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-        --
-        -- Some languages (like typescript) have entire language plugins that can be useful:
-        --    https://github.com/pmizio/typescript-tools.nvim
-        --
-        jsonls = {
-          settings = {
-            json = {
-              format = {
-                enable = true,
-                indent = {
-                  tabWidth = 2, -- Use 2 spaces for indentation
+          cmake = {},
+          cpptools = {},
+          codelldb = {},
+          gopls = {},
+          -- pyright = {},
+          eslint = {},
+          rust_analyzer = {
+            settings = {
+              ['rust-analyzer'] = {
+                checkOnSave = {
+                  command = 'clippy',
+                },
+                inlayHints = {
+                  enable = true,
+                  showParameterNames = true,
+                  parameterHintsPrefix = '<- ',
+                  otherHintsPrefix = '=> ',
                 },
               },
             },
           },
-          on_attach = function(_, bufnr)
-            -- Disable tab-to-indent behavior for JSON files
-            vim.bo[bufnr].expandtab = true -- Use spaces instead of tabs
-            vim.bo[bufnr].shiftwidth = 2 -- Indent with 2 spaces
-            vim.bo[bufnr].tabstop = 2 -- Tab characters as 2 spaces
-          end,
-        },
-        denols = {
-          root_dir = require('lspconfig').util.root_pattern('deno.json', 'deno.jsonc'),
-          on_attach = vim.on_attach,
-          settings = {
-            deno = {
-              enable = true,
-              lint = true,
-              suggest = {
-                imports = {
-                  hosts = {
-                    ['https://deno.land'] = true,
+          -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
+          --
+          -- Some languages (like typescript) have entire language plugins that can be useful:
+          --    https://github.com/pmizio/typescript-tools.nvim
+          --
+          jsonls = {
+            settings = {
+              json = {
+                format = {
+                  enable = true,
+                  indent = {
+                    tabWidth = 2, -- Use 2 spaces for indentation
                   },
                 },
               },
-              unstable = true,
+            },
+            on_attach = function(_, bufnr)
+              -- Disable tab-to-indent behavior for JSON files
+              vim.bo[bufnr].expandtab = true -- Use spaces instead of tabs
+              vim.bo[bufnr].shiftwidth = 2 -- Indent with 2 spaces
+              vim.bo[bufnr].tabstop = 2 -- Tab characters as 2 spaces
+            end,
+          },
+          denols = {
+            root_dir = require('lspconfig').util.root_pattern('deno.json', 'deno.jsonc'),
+            on_attach = vim.on_attach,
+            settings = {
+              deno = {
+                enable = true,
+                lint = true,
+                suggest = {
+                  imports = {
+                    hosts = {
+                      ['https://deno.land'] = true,
+                    },
+                  },
+                },
+                unstable = true,
+              },
             },
           },
-        },
-        ts_ls = {
-          on_attach = vim.on_attach,
-          single_file_support = false,
-          root_dir = require('lspconfig').util.root_pattern 'package.json',
-        },
-        taplo = {},
-        lua_ls = {
-          -- cmd = { ... },
-          -- filetypes = { ... },
-          -- capabilities = {},
-          settings = {
-            Lua = {
-              completion = {
-                callSnippet = 'Replace',
+          ts_ls = {
+            on_attach = vim.on_attach,
+            single_file_support = false,
+            root_dir = require('lspconfig').util.root_pattern 'package.json',
+          },
+          taplo = {},
+          lua_ls = {
+            -- cmd = { ... },
+            -- filetypes = { ... },
+            -- capabilities = {},
+            settings = {
+              Lua = {
+                completion = {
+                  callSnippet = 'Replace',
+                },
+                -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
+                -- diagnostics = { disable = { 'missing-fields' } },
               },
-              -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-              -- diagnostics = { disable = { 'missing-fields' } },
             },
           },
         },
@@ -800,34 +810,51 @@ require('lazy').setup({
       --
       -- You can add other tools here that you want Mason to install
       -- for you, so that they are available from within Neovim.
-      local ensure_installed = vim.tbl_keys(servers or {})
+      local ensure_installed = vim.tbl_keys(servers.mason or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
+      -- -- Either merge all additional server configs from the `servers.mason` and `servers.others` tables
+      -- -- to the default language server configs as provided by nvim-lspconfig or
+      -- -- define a custom server config that's unavailable on nvim-lspconfig.
+      -- for server, config in pairs(vim.tbl_extend('keep', servers.mason, servers.others)) do
+      --   if not vim.tbl_isempty(config or {}) then
+      --     vim.lsp.config(server, config)
+      --   end
+      -- end
 
       require('mason-lspconfig').setup {
-        ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        automatic_installation = false,
-        handlers = {
-          function(server_name)
-            local nvim_lsp = require 'lspconfig'
-            local server = servers[server_name] or {}
-
-            -- This handles overriding only values explicitly passed
-            -- by the server configuration above. Useful when disabling
-            -- certain features of an LSP (for example, turning off formatting for ts_ls)
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            nvim_lsp[server_name].setup(server)
-          end,
-        },
+        -- ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
+        auto_installation = true,
+        --   automatic_installation = false,
+        --   handlers = {
+        --     function(server_name)
+        --       -- local nvim_lsp = require 'lspconfig'
+        --       local server = servers[server_name] or {}
+        --
+        --       -- This handles overriding only values explicitly passed
+        --       -- by the server configuration above. Useful when disabling
+        --       -- certain features of an LSP (for example, turning off formatting for ts_ls)
+        --       server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
+        --       -- nvim_lsp[server_name].setup(server)
+        --       vim.lsp.config(server_name, server)
+        --       vim.lsp.enable(server_name)
+        --     end,
+        --   },
       }
+      vim.lsp.enable(vim.tbl_keys(servers.mason))
 
-      require('lspconfig').asm_lsp.setup {
-        on_attach = vim.on_attach,
-        command = 'asm-lsp',
-        filetypes = { 'asm', 's', 'S' },
-      }
+      -- Manually run vim.lsp.enable for all language servers that are *not* installed via Mason
+      -- if not vim.tbl_isempty(servers.others) then
+      --   vim.lsp.enable(vim.tbl_keys(servers.others))
+      -- end
+      --
+      -- require('lspconfig').asm_lsp.setup {
+      --   on_attach = vim.on_attach,
+      --   command = 'asm-lsp',
+      --   filetypes = { 'asm', 's', 'S' },
+      -- }
     end,
   },
 

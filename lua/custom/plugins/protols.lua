@@ -4,6 +4,6 @@ return {
     'neovim/nvim-lspconfig',
   },
   config = function()
-    require('lspconfig').protols.setup {}
+    -- require('lspconfig').protols.setup {}
   end,
 }
