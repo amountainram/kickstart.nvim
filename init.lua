@@ -721,7 +721,7 @@ require('lazy').setup({
           rust_analyzer = {
             settings = {
               ['rust-analyzer'] = {
-                checkOnSave = {
+                check = {
                   command = 'clippy',
                 },
                 inlayHints = {
