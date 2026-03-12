@@ -1088,6 +1088,7 @@ require('lazy').setup({
         'proto',
         'query',
         'rust',
+        'sql',
         'toml',
         'typescript',
         'vim',
