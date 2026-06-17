@@ -14,7 +14,7 @@ return {
       },
       build = 'make tiktoken',
       opts = {
-        model = 'claude-opus-4.6', -- or the exact model name CopilotChat expects
+        model = 'claude-sonnet-4.6', -- or the exact model name CopilotChat expects
       },
       keys = {
         { '<leader>cc', '<cmd>CopilotChatOpen<CR>', mode = 'n', desc = 'Open CopilotChat' },

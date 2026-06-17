@@ -174,6 +174,14 @@ vim.o.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
 vim.o.foldlevel = 99
 vim.o.foldlevelstart = 99
 
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = { 'yaml', 'yml' },
+  callback = function()
+    vim.opt_local.foldmethod = 'expr'
+    vim.opt_local.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+  end,
+})
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -712,6 +720,7 @@ require('lazy').setup({
           clangd = {
             filetypes = { 'c', 'cpp', 'objc', 'objcpp', 'cuda' }, -- exclude "proto".
           },
+          clojure_lsp = {},
           cmake = {},
           cpptools = {},
           codelldb = {},
@@ -794,6 +803,16 @@ require('lazy').setup({
               },
             },
           },
+          yamlls = {
+            settings = {
+              yaml = {
+                schemaStore = {
+                  enable = true,
+                },
+              },
+            },
+          },
+          helm_ls = {},
         },
       }
 
@@ -813,6 +832,7 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers.mason or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'yamlfmt', -- YAML formatter
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
       -- -- Either merge all additional server configs from the `servers.mason` and `servers.others` tables
@@ -855,6 +875,29 @@ require('lazy').setup({
       --   command = 'asm-lsp',
       --   filetypes = { 'asm', 's', 'S' },
       -- }
+
+      -- Helm and YAML file type detection
+      vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
+        pattern = {
+          '*/templates/**/*.yaml',
+          '*/templates/**/*.yml',
+          '*/templates/**/*.tpl',
+          '*/files/envoy/**/*.yaml',
+        },
+        callback = function(event)
+          vim.bo[event.buf].filetype = 'helm'
+        end,
+      })
+
+      vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
+        pattern = { '*.yaml', '*.yml' },
+        callback = function(event)
+          -- Only set to yaml if not already detected as helm
+          if vim.bo[event.buf].filetype ~= 'helm' then
+            vim.bo[event.buf].filetype = 'yaml'
+          end
+        end,
+      })
     end,
   },
 
@@ -891,6 +934,8 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        yaml = { 'yamlfmt' },
+        helm = { 'yamlfmt' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
@@ -1066,18 +1111,25 @@ require('lazy').setup({
       --  Check out: https://github.com/echasnovski/mini.nvim
     end,
   },
+  {
+    -- Stable syntax highlighting for Helm templates.
+    'towolf/vim-helm',
+    ft = { 'helm' },
+  },
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     branch = 'main',
     build = ':TSUpdate',
-    -- main = 'nvim-treesitter.configs', -- Sets main module to use for opts
+    main = 'nvim-treesitter', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
       ensure_installed = {
         'bash',
         'c',
+        'clojure',
         'diff',
         'html',
+        'helm',
         'javascript',
         'json',
         'jsonc',
@@ -1093,16 +1145,17 @@ require('lazy').setup({
         'typescript',
         'vim',
         'vimdoc',
+        'yaml',
       },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
         enable = true,
-        disable = { 'latex' },
+        disable = { 'latex', 'helm' },
         -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
         --  If you are experiencing weird indenting issues, add the language to
         --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby', 'latex', 'markdown' },
+        additional_vim_regex_highlighting = { 'ruby', 'latex', 'markdown', 'helm' },
       },
       indent = { enable = true, disable = { 'ruby' } },
     },
