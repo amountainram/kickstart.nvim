@@ -523,9 +523,11 @@ require('lazy').setup({
 
       -- Useful status updates for LSP.
       { 'j-hui/fidget.nvim', opts = {} },
-
-      -- Allows extra capabilities provided by blink.cmp
-      'saghen/blink.cmp',
+      -- NOTE: blink.cmp is NOT listed as a dependency here intentionally.
+      -- blink.cmp has event = 'VimEnter' (lazy), which would cause nvim-lspconfig
+      -- to also be deferred to VimEnter — creating a race condition with nvim-config-local,
+      -- which also runs .nvim.lua on VimEnter. blink.cmp extends LSP capabilities
+      -- automatically via its own plugin file, so no explicit dependency is needed.
     },
     config = function()
       require('lazydev').setup {}
@@ -833,6 +835,8 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
         'yamlfmt', -- YAML formatter
+        'prettierd', -- Preferred formatter daemon for Markdown
+        'prettier', -- Fallback formatter for Markdown
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
       -- -- Either merge all additional server configs from the `servers.mason` and `servers.others` tables
@@ -936,6 +940,7 @@ require('lazy').setup({
         lua = { 'stylua' },
         yaml = { 'yamlfmt' },
         helm = { 'yamlfmt' },
+        markdown = { 'prettierd', 'prettier', stop_after_first = true },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
