@@ -518,8 +518,8 @@ require('lazy').setup({
       -- Automatically install LSPs and related tools to stdpath for Neovim
       -- Mason must be loaded before its dependents so we need to set it up here.
       -- NOTE: `opts = {}` is the same as calling `require('mason').setup({})`
-      { 'mason-org/mason.nvim', version = '^1.0.0', opts = {} },
-      { 'mason-org/mason-lspconfig.nvim', version = '^1.0.0' },
+      { 'mason-org/mason.nvim', version = '^2.0.0', opts = {} },
+      { 'mason-org/mason-lspconfig.nvim', version = '^2.0.0' },
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
@@ -840,33 +840,18 @@ require('lazy').setup({
         'prettier', -- Fallback formatter for Markdown
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
-      -- -- Either merge all additional server configs from the `servers.mason` and `servers.others` tables
-      -- -- to the default language server configs as provided by nvim-lspconfig or
-      -- -- define a custom server config that's unavailable on nvim-lspconfig.
-      -- for server, config in pairs(vim.tbl_extend('keep', servers.mason, servers.others)) do
-      --   if not vim.tbl_isempty(config or {}) then
-      --     vim.lsp.config(server, config)
-      --   end
-      -- end
+
+      -- mason-lspconfig v2 dropped `handlers`/`automatic_installation` in favor of the
+      -- native `vim.lsp.config()` API: register each server's config here, then either
+      -- let `automatic_enable` turn them on or (as below) enable them explicitly.
+      for server, config in pairs(servers.mason) do
+        if not vim.tbl_isempty(config or {}) then
+          vim.lsp.config(server, config)
+        end
+      end
 
       require('mason-lspconfig').setup {
-        -- ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        auto_installation = true,
-        --   automatic_installation = false,
-        --   handlers = {
-        --     function(server_name)
-        --       -- local nvim_lsp = require 'lspconfig'
-        --       local server = servers[server_name] or {}
-        --
-        --       -- This handles overriding only values explicitly passed
-        --       -- by the server configuration above. Useful when disabling
-        --       -- certain features of an LSP (for example, turning off formatting for ts_ls)
-        --       server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-        --       -- nvim_lsp[server_name].setup(server)
-        --       vim.lsp.config(server_name, server)
-        --       vim.lsp.enable(server_name)
-        --     end,
-        --   },
+        automatic_enable = false, -- kickstart enables mason-managed servers manually below
       }
       vim.lsp.enable(vim.tbl_keys(servers.mason))
 
