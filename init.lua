@@ -182,6 +182,8 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 
+vim.o.exrc = true
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
@@ -733,7 +735,7 @@ require('lazy').setup({
           rust_analyzer = {
             settings = {
               ['rust-analyzer'] = {
-                checkOnSave = {
+                check = {
                   command = 'clippy',
                 },
                 inlayHints = {
