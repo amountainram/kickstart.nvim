@@ -726,9 +726,14 @@ require('lazy').setup({
             filetypes = { 'c', 'cpp', 'objc', 'objcpp', 'cuda' }, -- exclude "proto".
           },
           clojure_lsp = {},
-          cmake = {},
-          cpptools = {},
-          codelldb = {},
+          cmake = {
+            -- cmake-language-server reads the build tree to resolve variables,
+            -- targets and cached values; without it you only get builtin-command
+            -- completion and hover.
+            init_options = {
+              buildDirectory = 'build',
+            },
+          },
           gopls = {},
           -- pyright = {},
           eslint = {},
@@ -840,13 +845,21 @@ require('lazy').setup({
         'yamlfmt', -- YAML formatter
         'prettierd', -- Preferred formatter daemon for Markdown
         'prettier', -- Fallback formatter for Markdown
+        'clang-format', -- C/C++ formatter (reads .clang-format)
+        'gersemi', -- CMake formatter
+        -- DAP adapters: installed by Mason, but they are not language servers,
+        -- so they must not go in `servers.mason` (that table feeds vim.lsp.enable).
+        'cpptools',
+        'codelldb',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       -- mason-lspconfig v2 dropped `handlers`/`automatic_installation` in favor of the
       -- native `vim.lsp.config()` API: register each server's config here, then either
       -- let `automatic_enable` turn them on or (as below) enable them explicitly.
-      for server, config in pairs(servers.mason) do
+      -- Configs from `servers.mason` and `servers.others` are merged into the defaults
+      -- provided by nvim-lspconfig (or define servers nvim-lspconfig doesn't ship).
+      for server, config in pairs(vim.tbl_extend('keep', servers.mason, servers.others or {})) do
         if not vim.tbl_isempty(config or {}) then
           vim.lsp.config(server, config)
         end
@@ -913,8 +926,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { cpp = true }
-        local lsp_format_opt
+        local disable_filetypes = {}
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -929,6 +941,15 @@ require('lazy').setup({
         yaml = { 'yamlfmt' },
         helm = { 'yamlfmt' },
         markdown = { 'prettierd', 'prettier', stop_after_first = true },
+        -- clang-format directly rather than via clangd: `.h` is detected as
+        -- `cpp` by default (see :help ft-c-syntax), and going through the LSP
+        -- means headers get formatted by whichever client happens to attach.
+        c = { 'clang_format' },
+        cpp = { 'clang_format' },
+        objc = { 'clang_format' },
+        objcpp = { 'clang_format' },
+        cuda = { 'clang_format' },
+        cmake = { 'gersemi' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
