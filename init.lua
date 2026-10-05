@@ -90,6 +90,9 @@ P.S. You can delete this when you're done too. It's your config now! :)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
+-- NvChad base46 compiles highlight groups into this directory (see lua/custom/plugins/nvchad-ui.lua)
+vim.g.base46_cache = vim.fn.stdpath 'data' .. '/base46_cache/'
+
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = true
 vim.g.markdown_fenced_languages = {
@@ -189,7 +192,22 @@ vim.o.exrc = true
 
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
-vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+-- Also close the LSP popup (hover `K`, signature help, diagnostic float) opened from this buffer
+vim.keymap.set('n', '<Esc>', function()
+  vim.cmd.nohlsearch()
+  local preview_win = vim.b.lsp_floating_preview
+  if preview_win and vim.api.nvim_win_is_valid(preview_win) then
+    vim.api.nvim_win_close(preview_win, true)
+  end
+end, { desc = 'Clear search highlight and close LSP popup' })
+
+-- Clear multicursors (nvim 0.13+, see `:help multicursor`). Built-in CTRL-L does this,
+-- but <C-l> is mapped to window navigation below. <C-[> is only distinct from <Esc>
+-- when the terminal sends extended keys (tmux: `extended-keys`); otherwise it simply
+-- arrives as <Esc> and this mapping never fires.
+vim.keymap.set('n', '<C-[>', function()
+  vim.api.nvim_buf_clear_namespace(0, vim.api.nvim_create_namespace 'nvim.multicursor', 0, -1)
+end, { desc = 'Clear multicursors' })
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
@@ -579,7 +597,8 @@ require('lazy').setup({
 
           -- Rename the variable under your cursor.
           --  Most Language Servers support renaming across files, etc.
-          map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
+          --  Floating prompt pre-filled with the current name (see lua/custom/lsp_renamer.lua).
+          map('grn', require 'custom.lsp_renamer', '[R]e[n]ame')
 
           -- Execute a code action, usually your cursor needs to be on top of an error
           -- or a suggestion from your LSP for this to activate.
@@ -1057,33 +1076,15 @@ require('lazy').setup({
       -- See :h blink-cmp-config-fuzzy for more information
       fuzzy = { implementation = 'lua' },
 
-      -- Shows a signature help window while you type arguments for a function
-      signature = { enabled = true },
+      -- Signature help while typing function arguments is provided by NvChad UI
+      -- (`lsp.signature` in lua/chadrc.lua); keep only one of the two enabled.
+      signature = { enabled = false },
       -- re = { enabled = true },
     },
   },
 
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
-    config = function()
-      ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
-        styles = {
-          comments = { italic = false }, -- Disable italics in comments
-        },
-      }
-
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
-    end,
-  },
+  -- Colorscheme, statusline and tabline are provided by NvChad UI + base46
+  -- (see lua/custom/plugins/nvchad-ui.lua and lua/chadrc.lua).
 
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
@@ -1106,20 +1107,7 @@ require('lazy').setup({
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
 
-      -- Simple and easy statusline.
-      --  You could remove this setup call if you don't like it,
-      --  and try some other statusline plugin
-      local statusline = require 'mini.statusline'
-      -- set use_icons to true if you have a Nerd Font
-      statusline.setup { use_icons = vim.g.have_nerd_font }
-
-      -- You can configure sections in the statusline by overriding their
-      -- default behavior. For example, here we set the section for
-      -- cursor location to LINE:COLUMN
-      ---@diagnostic disable-next-line: duplicate-set-field
-      statusline.section_location = function()
-        return '%2l:%-2v'
-      end
+      -- The statusline is provided by NvChad UI (see lua/custom/plugins/nvchad-ui.lua)
 
       -- ... and there is more!
       --  Check out: https://github.com/echasnovski/mini.nvim
@@ -1223,6 +1211,17 @@ require('lazy').setup({
     },
   },
 })
+
+-- Load the highlight groups compiled by base46. On a fresh install the cache is only
+-- built once lazy has run the base46 `build` step, so skip quietly until then.
+if vim.uv.fs_stat(vim.g.base46_cache) then
+  for _, v in ipairs(vim.fn.readdir(vim.g.base46_cache)) do
+    dofile(vim.g.base46_cache .. v)
+  end
+end
+
+-- neo-tree + last edited file / README when nvim starts without a file
+require 'custom.startup'
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
