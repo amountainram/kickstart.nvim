@@ -382,6 +382,7 @@ require('lazy').setup({
       spec = {
         { '<leader>s', group = '[S]earch' },
         { '<leader>t', group = '[T]oggle' },
+        { '<leader>d', group = '[D]ebug', mode = { 'n', 'v' } },
         { '<leader>c', group = '[C]laude', mode = { 'n', 'v' } },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
       },
@@ -870,6 +871,11 @@ require('lazy').setup({
         -- so they must not go in `servers.mason` (that table feeds vim.lsp.enable).
         'cpptools',
         'codelldb',
+        -- Java: jdtls is started by nvim-jdtls (lua/custom/plugins/java.lua), not vim.lsp.enable,
+        -- so it lives here too; the other two are the debug/test bundles it loads.
+        'jdtls',
+        'java-debug-adapter',
+        'java-test',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -1132,6 +1138,7 @@ require('lazy').setup({
         'diff',
         'html',
         'helm',
+        'java',
         'javascript',
         'json',
         'jsonc',

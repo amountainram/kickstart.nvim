@@ -1,109 +1,195 @@
--- debug.lua
+-- Debugging (DAP): nvim-dap + dap-ui + inline variable values.
 --
--- Shows how to use the DAP plugin to debug your code.
+-- Keymaps: VS Code-style F-keys for stepping, everything else under <leader>d.
+--   <F5> start/continue  <F10> step over  <F11> step into  <S-F11> step out
+--   <F9> toggle breakpoint  <F7> toggle UI (also q in any debug window)  <F12> Lua server (debug Neovim itself)
 --
--- Primarily focused on configuring the debugger for Go, but can
--- be extended to other languages as well. That's why it's called
--- kickstart.nvim and not kitchen-sink.nvim ;)
+-- Adapters: Go via nvim-dap-go (delve), C/C++/Rust via nvim-dap-lldb (codelldb),
+-- Lua via one-small-step-for-vimkind. A .vscode/launch.json in the project is picked
+-- up automatically by `continue`.
+
+-- Wrap calls so the plugins are only required when a key is pressed (keeps dap lazy)
+local function dap(method, ...)
+  local args = { ... }
+  return function()
+    require('dap')[method](unpack(args))
+  end
+end
+
+local function toggle_lua_server()
+  local osv = require 'osv'
+  if osv.is_running() then
+    osv.stop()
+    vim.notify 'Debug: Lua server stopped'
+  else
+    osv.launch { port = 8086 }
+  end
+end
+
+-- dap-ui open/close that also gets neo-tree out of the way: it is closed when the
+-- debug UI opens and shown again when the debug UI closes (only if it was open before).
+local neotree_was_open = false
+
+local function find_win(predicate)
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if predicate(vim.bo[vim.api.nvim_win_get_buf(win)].filetype) then
+      return win
+    end
+  end
+end
+
+local function is_debug_ft(ft)
+  return ft:match '^dapui_' ~= nil or ft == 'dap-repl'
+end
+
+local function ui_open()
+  if find_win(function(ft)
+    return ft == 'neo-tree'
+  end) then
+    neotree_was_open = true
+    require('neo-tree.command').execute { action = 'close' }
+  end
+  require('dapui').open { reset = true } -- reset = restore the configured window sizes
+end
+
+local function ui_close()
+  require('dapui').close()
+  if neotree_was_open then
+    neotree_was_open = false
+    require('neo-tree.command').execute { action = 'show' }
+  end
+end
+
+local function ui_toggle()
+  if find_win(is_debug_ft) then
+    ui_close()
+  else
+    ui_open()
+  end
+end
 
 return {
-  -- NOTE: Yes, you can install new plugins here!
   'mfussenegger/nvim-dap',
-  -- NOTE: And you can specify dependencies as well
   dependencies = {
-    -- Creates a beautiful debugger UI
     'rcarriga/nvim-dap-ui',
+    'nvim-neotest/nvim-nio', -- required by nvim-dap-ui
+    { 'theHamsta/nvim-dap-virtual-text', opts = {} }, -- variable values inline, next to the code
 
-    -- Required dependency for nvim-dap-ui
-    'nvim-neotest/nvim-nio',
-
-    -- Installs the debug adapters for you
-    'williamboman/mason.nvim',
+    -- Installs the debug adapters
+    'mason-org/mason.nvim',
     'jay-babu/mason-nvim-dap.nvim',
 
-    -- Add your own debuggers here
-    'leoluz/nvim-dap-go',
-
-    -- lldb support
-    'julianolf/nvim-dap-lldb',
-
-    -- lua
-    'jbyuki/one-small-step-for-vimkind',
+    'leoluz/nvim-dap-go', -- go
+    'julianolf/nvim-dap-lldb', -- c, cpp, rust
+    'jbyuki/one-small-step-for-vimkind', -- lua (Neovim plugins/config)
   },
-  keys = function(_, keys)
-    local dap = require 'dap'
-    local dapui = require 'dapui'
-    local osv = require 'osv'
-    return {
-      -- Basic debugging keymaps, feel free to change to your liking!
-      { '<F5>', dap.continue, desc = 'Debug: Start/Continue' },
-      { '<F10>', dap.step_over, desc = 'Debug: Step Over' },
-      { '<F11>', dap.step_into, desc = 'Debug: Step Into' },
-      { '<S-F11>', dap.step_out, desc = 'Debug: Step Out' },
-      { '<leader>b', dap.toggle_breakpoint, desc = 'Debug: Toggle [B]reakpoint' },
-      { '<leader>db', dap.toggle_breakpoint, desc = 'Debug: [D]elete all [B]reakpoints' },
-      {
-        '<leader>B',
-        function()
-          dap.set_breakpoint(vim.fn.input 'Breakpoint condition: ')
-        end,
-        desc = 'Debug: Set [B]reakpoint',
-      },
-      {
-        '<leader>k',
-        function()
-          local widgets = require 'dap.ui.widgets'
-          widgets.hover()
-        end,
-        desc = 'Inspect variable value or alternate action',
-      },
-      -- Toggle to see last session result. Without this, you can't see session output in case of unhandled exception.
-      { '<F7>', dapui.toggle, desc = 'Debug: See last session result.' },
-      {
-        '<F12>',
-        function()
-          if osv.is_running() then
-            osv.stop()
-            print 'Debug: Lua Server Stopped'
-          else
-            osv.launch { port = 8086 }
-          end
-        end,
-        desc = 'Debug: Launch/Stop Lua Server on port 8086',
-      },
+  keys = {
+    -- Stepping
+    { '<F5>', dap 'continue', desc = 'Debug: Start/Continue' },
+    { '<F10>', dap 'step_over', desc = 'Debug: Step Over' },
+    { '<F11>', dap 'step_into', desc = 'Debug: Step Into' },
+    { '<S-F11>', dap 'step_out', desc = 'Debug: Step Out' },
+    { '<F23>', dap 'step_out', desc = 'Debug: Step Out' }, -- what <S-F11> arrives as under tmux/xterm terminfo
+    { '<F9>', dap 'toggle_breakpoint', desc = 'Debug: Toggle Breakpoint' },
+    {
+      '<F7>',
+      ui_toggle,
+      desc = 'Debug: Toggle UI',
+    },
+    { '<F12>', toggle_lua_server, desc = 'Debug: Launch/Stop Lua server (port 8086)' },
 
-      unpack(keys),
-    }
-  end,
+    -- Breakpoints
+    { '<leader>db', dap 'toggle_breakpoint', desc = 'Toggle [B]reakpoint' },
+    {
+      '<leader>dB',
+      function()
+        require('dap').set_breakpoint(vim.fn.input 'Breakpoint condition: ')
+      end,
+      desc = 'Conditional [B]reakpoint',
+    },
+    {
+      '<leader>dl',
+      function()
+        require('dap').set_breakpoint(nil, nil, vim.fn.input 'Log message ({expr} is interpolated): ')
+      end,
+      desc = '[L]og point',
+    },
+    { '<leader>dC', dap 'clear_breakpoints', desc = '[C]lear all breakpoints' },
+    { '<leader>dL', dap 'list_breakpoints', desc = '[L]ist breakpoints (quickfix)' },
+
+    -- Session
+    { '<leader>dc', dap 'continue', desc = 'Start/[C]ontinue' },
+    { '<leader>dg', dap 'run_to_cursor', desc = 'Run to cursor ([G]o here)' },
+    { '<leader>dr', dap 'run_last', desc = '[R]erun last configuration' },
+    { '<leader>dt', dap 'terminate', desc = '[T]erminate session' },
+    { '<leader>dp', dap 'pause', desc = '[P]ause' },
+    { '<leader>dk', dap 'up', desc = 'Stack frame up' },
+    { '<leader>dj', dap 'down', desc = 'Stack frame down' },
+
+    -- Inspect
+    {
+      '<leader>du',
+      ui_toggle,
+      desc = 'Toggle [U]I',
+    },
+    {
+      '<leader>de',
+      function()
+        require('dapui').eval()
+      end,
+      mode = { 'n', 'v' },
+      desc = '[E]valuate expression',
+    },
+    {
+      '<leader>dR',
+      function()
+        require('dap').repl.toggle()
+      end,
+      desc = 'Toggle [R]EPL',
+    },
+    { '<leader>dn', toggle_lua_server, desc = 'Lua server for debugging [N]eovim' },
+  },
   config = function()
     local dap = require 'dap'
     local dapui = require 'dapui'
 
     require('mason-nvim-dap').setup {
-      -- Makes a best effort to setup the various debuggers with
-      -- reasonable debug configurations
       automatic_installation = true,
-
-      -- You can provide additional configuration to the handlers,
-      -- see mason-nvim-dap README for more information
-      handlers = {},
-
-      -- You'll need to check that you have the required things installed
-      -- online, please don't ask me how to install them :)
-      ensure_installed = {
-        -- Update this to ensure that you have the debuggers for the langs you want
-        'delve',
-        'lldb',
-        'codelldb',
+      ensure_installed = { 'delve', 'codelldb' },
+      handlers = {
+        -- Default handler: registers adapter + basic configurations for installed adapters
+        function(config)
+          require('mason-nvim-dap').default_setup(config)
+        end,
+        -- nvim-dap-go / nvim-dap-lldb register richer configurations for these;
+        -- letting mason-nvim-dap add its own as well duplicates every entry in the picker
+        delve = function() end,
+        codelldb = function() end,
       },
     }
 
-    -- Dap UI setup
     -- For more information, see |:help nvim-dap-ui|
     dapui.setup {
-      -- Set icons to characters that are more likely to work in every terminal.
-      --    Feel free to remove or use ones that you like more! :)
-      --    Don't feel like these are good choices.
+      -- 4 windows instead of the default 6: breakpoints are in <leader>dL (quickfix)
+      -- and watches are covered by <leader>de (evaluate)
+      layouts = {
+        {
+          position = 'left',
+          size = 45,
+          elements = {
+            { id = 'scopes', size = 0.7 }, -- variables
+            { id = 'stacks', size = 0.3 }, -- call stack / threads
+          },
+        },
+        {
+          position = 'bottom',
+          size = 12,
+          elements = {
+            { id = 'repl', size = 0.5 }, -- debugger REPL + adapter output, with the step controls
+            { id = 'console', size = 0.5 }, -- program stdout/stdin (integrated terminal)
+          },
+        },
+      },
       icons = { expanded = '▾', collapsed = '▸', current_frame = '*' },
       controls = {
         icons = {
@@ -120,14 +206,23 @@ return {
       },
     }
 
-    dap.listeners.after.event_initialized['dapui_config'] = dapui.open
-    dap.listeners.before.event_terminated['dapui_config'] = dapui.close
-    dap.listeners.before.event_exited['dapui_config'] = dapui.close
+    -- Open the UI when a session starts. It is intentionally *not* closed when the program
+    -- exits, so its output and any unhandled exception stay visible; close it with q, <F7> or <leader>du.
+    dap.listeners.after.event_initialized['dapui_config'] = ui_open
+
+    -- `q` in any debug window closes the whole debug UI (not just that one split)
+    vim.api.nvim_create_autocmd('FileType', {
+      pattern = { 'dapui_scopes', 'dapui_stacks', 'dapui_console', 'dap-repl' },
+      desc = 'Close the whole dap-ui with q',
+      callback = function(args)
+        vim.keymap.set('n', 'q', ui_close, { buffer = args.buf, desc = 'Debug: Close UI' })
+      end,
+    })
 
     vim.fn.sign_define('DapBreakpoint', { text = '●', texthl = 'DapBreakpoint', linehl = '', numhl = '' })
     vim.fn.sign_define('DapBreakpointCondition', { text = '●', texthl = 'DapBreakpointCondition', linehl = '', numhl = '' })
     vim.fn.sign_define('DapLogPoint', { text = '◆', texthl = 'DapLogPoint', linehl = '', numhl = '' })
-    vim.fn.sign_define('DapStopped', { text = '', texthl = 'DapStopped', linehl = 'DapStopped', numhl = 'DapStopped' })
+    vim.fn.sign_define('DapStopped', { text = '', texthl = 'DapStopped', linehl = 'DapStopped', numhl = 'DapStopped' })
 
     local function set_dap_marker_colors()
       -- Reuse current SignColumn background (except for DapStoppedLine)
@@ -140,6 +235,7 @@ return {
       vim.api.nvim_set_hl(0, 'DapStopped', { fg = '#00ff00', bg = sign_column_bg, ctermbg = sign_column_ctermbg })
       vim.api.nvim_set_hl(0, 'DapStoppedLine', { bg = '#2e4d3d', ctermbg = 'Green' })
       vim.api.nvim_set_hl(0, 'DapBreakpoint', { fg = '#c23127', bg = sign_column_bg, ctermbg = sign_column_ctermbg })
+      vim.api.nvim_set_hl(0, 'DapBreakpointCondition', { fg = '#e0af68', bg = sign_column_bg, ctermbg = sign_column_ctermbg })
       vim.api.nvim_set_hl(0, 'DapBreakpointRejected', { fg = '#888ca6', bg = sign_column_bg, ctermbg = sign_column_ctermbg })
       vim.api.nvim_set_hl(0, 'DapLogPoint', { fg = '#61afef', bg = sign_column_bg, ctermbg = sign_column_ctermbg })
     end
@@ -155,11 +251,8 @@ return {
       desc = 'Prevent base46 theme switch clearing self-defined DAP marker colors',
       callback = set_dap_marker_colors,
     })
+    set_dap_marker_colors()
 
-    -- Deferred so it runs after the base46 highlight cache is loaded at the end of init.lua
-    vim.schedule(set_dap_marker_colors)
-
-    -- Install golang specific config
     require('dap-go').setup {
       delve = {
         -- On Windows delve must be run attached or it crashes.
@@ -167,7 +260,6 @@ return {
         detached = vim.fn.has 'win32' == 0,
       },
     }
-    -- Install rust specific config
     require('dap-lldb').setup {}
 
     dap.configurations.lua = {
