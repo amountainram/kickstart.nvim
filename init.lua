@@ -177,11 +177,19 @@ vim.o.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
 vim.o.foldlevel = 99
 vim.o.foldlevelstart = 99
 
+-- YAML / Helm folding: use treesitter when parser + folds query are available, otherwise fold by indent
 vim.api.nvim_create_autocmd('FileType', {
-  pattern = { 'yaml', 'yml' },
-  callback = function()
-    vim.opt_local.foldmethod = 'expr'
-    vim.opt_local.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+  pattern = { 'yaml', 'helm' },
+  callback = function(args)
+    local lang = vim.treesitter.language.get_lang(vim.bo[args.buf].filetype)
+    local ok, query = pcall(vim.treesitter.query.get, lang, 'folds')
+    if ok and query then
+      vim.opt_local.foldmethod = 'expr'
+      vim.opt_local.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+    else
+      vim.opt_local.foldmethod = 'indent'
+    end
+    vim.opt_local.foldlevel = 99
   end,
 })
 
@@ -1168,6 +1176,13 @@ require('lazy').setup({
       },
       indent = { enable = true, disable = { 'ruby' } },
     },
+    -- The `main` branch ignores `ensure_installed`; install parsers (and their queries) explicitly.
+    -- Requires the `tree-sitter` CLI to be on PATH.
+    config = function(_, opts)
+      if vim.fn.executable 'tree-sitter' == 1 then
+        require('nvim-treesitter').install(opts.ensure_installed)
+      end
+    end,
     -- There are additional nvim-treesitter modules that you can use to interact
     -- with nvim-treesitter. You should go explore a few and see what interests you:
     --
